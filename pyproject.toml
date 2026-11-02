@@ -34,4 +34,11 @@ fused-ssim = { git = "https://github.com/rahul-goel/fused-ssim", rev = "328dc983
 fused-bilagrid = { git = "https://github.com/harry7557558/fused-bilagrid", rev = "90f9788e57d3545e3a033c1038bb9986549632fe" }
 gsplat = { git = "https://github.com/nerfstudio-project/gsplat.git" }
 
+[tool.uv.extra-build-dependencies]
+# These packages import torch in setup.py without declaring it as a build dependency.
+# match-runtime builds them against the same torch version the project installs.
+fused-ssim = [{ requirement = "torch", match-runtime = true }]
+fused-bilagrid = [{ requirement = "torch", match-runtime = true }]
+# gsplat's setup.py also compiles with ninja (use_ninja=True) but doesn't declare it at build time.
+gsplat = [{ requirement = "torch", match-runtime = true }, "ninja"]
 

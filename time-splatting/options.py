@@ -13,8 +13,10 @@ class DefaultConfig:
     disable_viewer: bool = False
     # Path to the .pt files. If provide, it will skip training and run evaluation only.
     ckpt: Optional[List[str]] = None
-    # Path to the time-lapse dataset
-    data_dir: str = "../../gsplat/examples/data/sunnyhoy_cropped_new"
+    # Path to the time-lapse dataset (required)
+    data_dir: str = ""
+    # Where to write outputs. Defaults to results/<name of data_dir>
+    result_dir: Optional[str] = None
     # Downsample factor for the dataset
     data_factor: int = 1
     # Every N images there is a test image

@@ -139,7 +139,10 @@ class Runner:
 
         self.cfg = cfg
         self.device = "cuda"
-        cfg.result_dir = f"results/{os.path.basename(cfg.data_dir)}"
+        if not cfg.data_dir:
+            raise ValueError("Set --data_dir to a folder of time-lapse images.")
+        if cfg.result_dir is None:
+            cfg.result_dir = f"results/{os.path.basename(os.path.normpath(cfg.data_dir))}"
 
         # Where to dump results.
         os.makedirs(cfg.result_dir, exist_ok=True)
@@ -774,7 +777,7 @@ class Runner:
             )  # [1, H, W, 3]
 
             if cfg.use_shading:
-                sun_angles = data["sun_angles"].float().to(device)
+                sun_angles = data["sun_angle"].float().to(device)
                 times = torch.cat([times, sun_angles[0], sun_angles[1]], dim=-1)
                 shading_colors, shading_alphas, _ = self.rasterize_splats(
                     splats=self.shading_splats,

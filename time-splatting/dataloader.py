@@ -11,6 +11,29 @@ from PIL import Image
 from pysolar.solar import get_altitude, get_azimuth
 
 
+TIMESTAMP_FORMATS = (
+    "%Y-%m-%dT%H:%M:%S",  # registration output, e.g. 2024-11-20T14:45:52
+    "%Y-%m-%dT%H-%M-%S",
+    "%Y-%m-%dT%H%M%S",
+    "%Y-%m-%d-%H-%M-%S",
+)
+
+
+def parse_timestamp(name: str, image_path: str) -> datetime:
+    """
+    Parse the capture time from an image filename stem.
+    """
+    for fmt in TIMESTAMP_FORMATS:
+        try:
+            return datetime.strptime(name, fmt)
+        except ValueError:
+            continue
+    raise ValueError(
+        f"Could not parse a timestamp from {image_path}. "
+        f"Expected a name like 2024-11-20T14:45:52 (tried {', '.join(TIMESTAMP_FORMATS)})."
+    )
+
+
 def sun_angle(time: datetime, lat: float = 42.4440, lon: float = -76.5019):
     """
     Returns the sun angle given a location and time
@@ -61,12 +84,7 @@ class TimeLapseDataset:
         for image_path in self.image_paths:
             date = os.path.basename(image_path)
             date = date.split(".")[0]
-            if "" in date:
-                date = datetime.strptime(date, "%Y-%m-%dT%H%M%S")
-            elif ":" in date:
-                date = datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
-            else:
-                date = datetime.strptime(date, "%Y-%m-%d-%H-%M-%S")
+            date = parse_timestamp(date, image_path)
             dates.append(date)
 
             azimuth, altitude = sun_angle(date)
