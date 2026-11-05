@@ -8,6 +8,6 @@ NAME=balcony1                                                               # ou
 DATA=../pocket-time-lapse-registration/results/$NAME/images/pano_aligned    # folder of aligned panos
 
 mkdir -p "results/$NAME"
-uv run --frozen python time-splatting/train.py mcmc \
+uv run --frozen python time-splatting/train.py default \
     --data_dir "$DATA" \
     --result_dir "results/$NAME" 2>&1 | tee -a "results/$NAME/train.log"
