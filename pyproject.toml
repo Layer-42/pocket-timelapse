@@ -3,7 +3,7 @@ name = "time-splatting"
 version = "0.1.0"
 description = "Time splatting factorizes a time-lapse into intrinsic images."
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12,<3.13"
 maintainers = [
     { name = "Eric Chen", email="echen01@mit.edu"}
 ]
@@ -11,28 +11,57 @@ maintainers = [
 dependencies = [
     "fused-bilagrid",
     "fused-ssim",
+    "gdown",
     "gsplat>=1.5.2",
     "imageio[ffmpeg]>=2.37.0",
     "matplotlib>=3.10.3",
     "nerfview>=0.1.3",
+    "numpy>=1.26,<2",
+    "ptlreg",
     "pysolar>=0.13",
+    "python-dateutil",
     "pytz>=2025.2",
     "pyyaml>=6.0.2",
     "scikit-learn>=1.7.0",
+    "setuptools>=60",
     "splines>=0.3.2",
     "tensorboard>=2.19.0",
-    "torch>=2.7.1",
+    "torch==2.7.1",
     "torchmetrics[image]>=1.7.3",
-    "torchvision>=0.22.1",
+    "torchvision==0.22.1",
     "tqdm>=4.67.1",
     "tyro>=0.9.24",
     "viser>=0.2.23",
 ]
 
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
 [tool.uv.sources]
+ptlreg = { path = "third_party/registration", editable = true }
+torch = { index = "pytorch-cu128" }
+torchvision = { index = "pytorch-cu128" }
 fused-ssim = { git = "https://github.com/rahul-goel/fused-ssim", rev = "328dc9836f513d00c4b5bc38fe30478b4435cbb5" }
 fused-bilagrid = { git = "https://github.com/harry7557558/fused-bilagrid", rev = "90f9788e57d3545e3a033c1038bb9986549632fe" }
-gsplat = { git = "https://github.com/nerfstudio-project/gsplat.git" }
+gsplat = { git = "https://github.com/nerfstudio-project/gsplat.git", rev = "450981757afac1c7a4a2887e8f9da2c13a9dc688" }
+
+# match-runtime needs static metadata, which these git packages don't provide
+[[tool.uv.dependency-metadata]]
+name = "gsplat"
+version = "1.5.2"
+requires-dist = ["jaxtyping", "ninja", "numpy", "rich", "torch"]
+
+[[tool.uv.dependency-metadata]]
+name = "fused-ssim"
+version = "0.0.0"
+requires-dist = []
+
+[[tool.uv.dependency-metadata]]
+name = "fused-bilagrid"
+version = "0.0.0"
+requires-dist = []
 
 [tool.uv.extra-build-dependencies]
 # These packages import torch in setup.py without declaring it as a build dependency.

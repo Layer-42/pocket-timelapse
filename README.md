@@ -10,66 +10,65 @@
 
 Time splatting reconstructs a time-lapse from registered panoramas and factorizes it into intrinsic images. It is built on [gsplat](https://github.com/nerfstudio-project/gsplat) and includes an interactive viewer.
 
-Requirements: an NVIDIA GPU with the CUDA toolkit (`nvcc` on your PATH), and Ubuntu. Tested with Python 3.13, PyTorch 2.7.1, and gsplat 1.5.2.
+Requirements: an NVIDIA GPU, Docker, and the NVIDIA Container Toolkit. The image includes COLMAP 4.1 and one Python 3.12 environment, installed from `requirements.txt`, with PyTorch 2.7.1 (CUDA 12.8), the CUDA extensions, and the [registration](https://github.com/Layer-42/pocket-time-lapse-registration) code from `third_party/registration`. Python 3.12 is used because registration needs `numpy<2`.
 
-## Install
-
-```bash
-./scripts/install.sh
-```
-
-This installs the Python environment with [uv](https://docs.astral.sh/uv/) and builds the CUDA extensions for your GPU. The code is in `time-splatting/`. The install files are in the repository root.
-
-Pip alternative (install PyTorch first):
+## Setup
 
 ```bash
-pip install torch torchvision
-pip install -r requirements.txt --no-build-isolation
+git clone --recurse-submodules <this repo>
+cd pocket-timelapse
+cp .env.example .env
+docker compose build
 ```
 
-## Train
+In an existing clone, run `git submodule update --init` instead of cloning again.
 
-The input is the `pano_aligned` folder from the [registration repo](../pocket-time-lapse-registration), at `results/<NAME>/images/pano_aligned`. Keep the two repos side by side:
+## Layout
 
+```text
+.env                          # DATA_ROOT, DRIVE_FOLDER
+third_party/registration/     # registration code (git submodule)
+requirements.txt              # the one dependency list for the image
+scripts/download.sh           # all datasets
+scripts/<step>_<dataset>.sh   # register, train, render per dataset
+data/
+├── downloads/                # zips from Google Drive
+├── raw/<dataset>/            # primary/ and secondary/ captures
+├── registered/<dataset>/     # registration output, incl. images/pano_aligned/
+└── trained/<dataset>/        # checkpoints, videos, logs
 ```
-pocket-time-lapse-registration/
-pocket-timelapse/
-```
 
-Set `NAME` and `DATA` at the top of `scripts/run_train.sh`, then run it from this repo's root:
+## Run
+
+The scripts run inside the container. The repo is mounted at `/workspace/pocket-timelapse`, so everything under `data/` stays on your host.
 
 ```bash
-./scripts/run_train.sh
+docker compose run --rm pocket-timelapse
 ```
 
-Training uses MCMC, writes to `results/<NAME>/`, and opens the Viser viewer when it finishes. Press Ctrl+C to stop the viewer. The log is `train.log`.
-
-To change the training options, call `train.py` directly from the repo root:
+Download all sample datasets once:
 
 ```bash
-uv run --frozen python time-splatting/train.py mcmc --data_dir /path/to/pano_aligned --result_dir results/balcony1
+scripts/download.sh          # data/raw/<dataset>
 ```
 
-- `mcmc` or `default`: densification strategy. `mcmc` is recommended.
-- `--data_dir`: pano folder (required).
-- `--result_dir`: output folder. Defaults to `results/<name of data_dir>`.
-- `--disable_viewer`: exit without opening the viewer.
-
-## Render
-
-Set `NAME` and `DATA` at the top of `scripts/run_render.sh`, then run it:
+Then, for `balcony1` (`balc`):
 
 ```bash
-./scripts/run_render.sh
+scripts/register_balc.sh     # data/registered/balcony1
+scripts/train_balc.sh        # data/trained/balcony1
+scripts/render_balc.sh       # data/trained/balcony1/videos
 ```
 
-This renders from the newest checkpoint in `results/<NAME>/ckpts` to `results/<NAME>/videos/traj_<step>.mp4`, and opens the viewer. The log is `render.log`.
+For `hoyGarageRoofHydrant1`, use the `_hoyg.sh` scripts. You can also run a single step from the host, for example `docker compose run --rm pocket-timelapse scripts/train_balc.sh`.
 
-To render from a specific checkpoint, pass `--ckpt` to `train.py`:
+- Registration uses COLMAP on the GPU and can take over an hour per dataset. Panos that already exist are skipped on a rerun.
+- Extra arguments are passed through: `scripts/train_balc.sh --max-steps 200` is a quick smoke test.
+- `render_*.sh` uses the newest checkpoint in `data/trained/<dataset>/ckpts`.
+- Each step appends to a log in its output folder.
+- The Viser viewer is disabled, since it is not reachable from the host unless you publish its port.
 
-```bash
-uv run --frozen python time-splatting/train.py mcmc --data_dir /path/to/pano_aligned --result_dir results/balcony1 --ckpt results/balcony1/ckpts/<step>.pt
-```
+To add a dataset, copy the `register`, `train` and `render` scripts of an existing one and change `DATASET`.
 
 ## Tuning
 

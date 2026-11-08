@@ -1,0 +1,3 @@
+[submodule "third_party/registration"]
+	path = third_party/registration
+	url = https://github.com/Layer-42/pocket-time-lapse-registration

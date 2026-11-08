@@ -883,6 +883,14 @@ class Runner:
         video_dir = f"{cfg.result_dir}/videos"
         os.makedirs(video_dir, exist_ok=True)
         writer = imageio.get_writer(f"{video_dir}/traj_{step}.mp4", fps=60)
+        if cfg.use_shading:
+            # Intrinsic components: albedo (time only) and shading (time + sun angle)
+            albedo_writer = imageio.get_writer(
+                f"{video_dir}/traj_{step}_albedo.mp4", fps=60
+            )
+            shading_writer = imageio.get_writer(
+                f"{video_dir}/traj_{step}_shading.mp4", fps=60
+            )
         for i in tqdm.trange(len(times), desc="Rendering trajectory"):
             albedos, _, _ = self.rasterize_splats(
                 splats=self.splats,
@@ -935,8 +943,17 @@ class Runner:
             canvas = torch.cat(canvas_list, dim=2).squeeze(0).cpu().numpy()
             canvas = (canvas * 255).astype(np.uint8)
             writer.append_data(canvas)
+
+            if cfg.use_shading:
+                to_u8 = lambda x: (x.squeeze(0).cpu().numpy() * 255).astype(np.uint8)
+                albedo_writer.append_data(to_u8(albedos))
+                shading_writer.append_data(to_u8(shadings))
         writer.close()
         print(f"Video saved to {video_dir}/traj_{step}.mp4")
+        if cfg.use_shading:
+            albedo_writer.close()
+            shading_writer.close()
+            print(f"Albedo and shading saved to {video_dir}/traj_{step}_{{albedo,shading}}.mp4")
 
     @torch.no_grad()
     def abolute_to_relative_time(self, t: float, hour: float):
