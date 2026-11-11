@@ -11,5 +11,5 @@ mkdir -p "$OUT"
 python time-splatting/train.py default \
     --data-dir "$DATA_ROOT/registered/$DATASET/images/pano_aligned" \
     --result-dir "$OUT" \
-    --disable-viewer "$@" \
+    --disable-viewer \
     2>&1 | tee -a "$OUT/train.log"

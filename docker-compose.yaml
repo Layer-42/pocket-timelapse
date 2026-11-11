@@ -1,30 +1,20 @@
-
 services:
   pocket-timelapse:
+    container_name: pocket-timelapse
+
     build:
       context: .
       dockerfile: Dockerfile
       args:
-        USERNAME: pocket-timelapse
-        UID: 1000
-        GID: 1000
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
 
     image: layer42/pocket-timelapse:cu128
-    container_name: pocket-timelapse
 
     gpus: all
     shm_size: "8gb"
 
-    environment:
-      TORCH_CUDA_ARCH_LIST: "7.5;8.0;8.6+PTX"
-      NVIDIA_VISIBLE_DEVICES: all
-      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+    user: "${UID:-1000}:${GID:-1000}"
 
     volumes:
       - .:/workspace/pocket-timelapse
-
-    working_dir: /workspace/pocket-timelapse
-
-    stdin_open: true
-    tty: true
-    command: /bin/bash

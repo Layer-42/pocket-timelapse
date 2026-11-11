@@ -13,5 +13,5 @@ python time-splatting/train.py default \
     --data-dir "$DATA_ROOT/registered/$DATASET/images/pano_aligned" \
     --result-dir "$OUT" \
     --ckpt "$CKPT" \
-    --disable-viewer "$@" \
+    --disable-viewer \
     2>&1 | tee -a "$OUT/render.log"
