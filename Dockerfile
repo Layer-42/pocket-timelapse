@@ -1,3 +1,4 @@
+
 # syntax=docker/dockerfile:1
 
 FROM nvidia/cuda:12.8.0-devel-ubuntu22.04 AS base
@@ -6,7 +7,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 ARG COLMAP_VERSION=4.1.0
 ARG MAX_JOBS=4
 
-# Turing to Blackwell. Override with --build-arg CUDA_ARCHITECTURES="80" etc.
+# GPU architectures: Turing, Ampere, Ada, Hopper, Blackwell
 ARG CUDA_ARCHITECTURES="75;80;86;89;90;100;120"
 ARG TORCH_CUDA_ARCH_LIST="7.5;8.0;8.6;8.9;9.0;10.0;12.0+PTX"
 
@@ -16,6 +17,7 @@ ENV CUDA_HOME=/usr/local/cuda \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
 
+# System dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git curl ca-certificates unzip \
     build-essential ninja-build pkg-config \
@@ -29,11 +31,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgl-dev libglew-dev libgl1 libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Ubuntu 22.04 ships CMake 3.22, which is too old for COLMAP
+# Install CMake and uv
 RUN python3 -m pip install --no-cache-dir \
-    "cmake>=3.27" ninja uv \
-    && cmake --version
+    "cmake>=3.27" ninja uv
 
+# Build COLMAP
 RUN curl -fsSL \
         "https://github.com/colmap/colmap/archive/refs/tags/${COLMAP_VERSION}.tar.gz" \
         -o /tmp/colmap.tar.gz \
@@ -58,7 +60,6 @@ ARG USERNAME=pocket-timelapse
 ARG UID=1000
 ARG GID=1000
 
-# Python 3.12: registration needs numpy<2, which has no wheels for 3.13
 ENV UV_PYTHON_INSTALL_DIR=/opt/uv/python \
     UV_LINK_MODE=copy \
     UV_INDEX_STRATEGY=unsafe-best-match \
@@ -70,13 +71,30 @@ ENV UV_PYTHON_INSTALL_DIR=/opt/uv/python \
 
 WORKDIR /workspace/pocket-timelapse
 
-COPY requirements.txt ./
-COPY third_party/registration third_party/registration
-COPY scripts/install.sh scripts/install.sh
-RUN --mount=type=cache,target=/root/.cache/uv \
-    VENV=/opt/venv bash scripts/install.sh
+# Create Python 3.12 environment
+RUN uv venv --python 3.12 --seed /opt/venv
 
-# Non-recursive chown: a recursive one would copy the venv layers
+# Install PyTorch first
+COPY requirements.txt ./
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    grep -E '^(--extra-index-url|torch)' requirements.txt \
+        > /tmp/torch.txt \
+    && uv pip install -r /tmp/torch.txt \
+        setuptools wheel ninja \
+    && rm /tmp/torch.txt
+
+# Install project dependencies and compile gsplat from source
+COPY third_party/registration third_party/registration
+
+RUN --mount=type=cache,target=/root/.cache/uv \
+    MAX_JOBS=8 uv pip install -r requirements.txt \
+        --no-build-isolation-package fused-ssim \
+        --no-build-isolation-package fused-bilagrid \
+        --no-build-isolation-package gsplat \
+        --no-binary gsplat
+
+# Non-root user
 RUN groupadd --gid ${GID} ${USERNAME} \
     && useradd \
         --uid ${UID} \
@@ -84,8 +102,8 @@ RUN groupadd --gid ${GID} ${USERNAME} \
         --create-home \
         --shell /bin/bash \
         ${USERNAME} \
-    && mkdir -p /workspace/pocket-timelapse \
-    && chown ${USERNAME}:${USERNAME} /workspace /workspace/pocket-timelapse
+    && chown ${USERNAME}:${USERNAME} \
+        /workspace /workspace/pocket-timelapse
 
 USER ${USERNAME}
 
